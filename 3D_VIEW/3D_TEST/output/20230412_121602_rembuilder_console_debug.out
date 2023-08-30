@@ -1,0 +1,28 @@
+2023-04-12 12:16:02,887 [rembuilder] [INFO] Connecting to radio://0/100/2M/E7E7E7E7E7
+2023-04-12 12:16:06,697 [rembuilder] [DEBUG] CF: SYS: ----------------------------
+2023-04-12 12:16:06,697 [rembuilder] [DEBUG] CF: SYS: Crazyflie 2.1 is up and running!
+2023-04-12 12:16:06,697 [rembuilder] [DEBUG] CF: SYS: Build 0:b8d2e0b9e983 (2022.12) CLEAN
+2023-04-12 12:16:06,697 [rembuilder] [DEBUG] CF: SYS: I am 0x2039343053335008001F0033 and I have 1024KB of flash!
+2023-04-12 12:16:06,697 [rembuilder] [DEBUG] CF: CFGBLK: v1, verification [OK]
+2023-04-12 12:16:06,698 [rembuilder] [DEBUG] CF: DECK_CORE: 1 deck(s) found
+2023-04-12 12:16:06,698 [rembuilder] [DEBUG] CF: DECK_CORE: Calling INIT on driver bcDWM1000 for deck 0
+2023-04-12 12:16:06,698 [rembuilder] [DEBUG] CF: IMU: BMI088: Using I2C interface.
+2023-04-12 12:16:06,698 [rembuilder] [DEBUG] CF: IMU: BMI088 Gyro connection [OK].
+2023-04-12 12:16:06,699 [rembuilder] [DEBUG] CF: IMU: BMI088 Accel connection [OK]
+2023-04-12 12:16:06,699 [rembuilder] [DEBUG] CF: IMU: BMP388 I2C connection [OK]
+2023-04-12 12:16:06,699 [rembuilder] [DEBUG] CF: ESTIMATOR: Using Kalman (2) estimator
+2023-04-12 12:16:06,700 [rembuilder] [DEBUG] CF: CONTROLLER: Using PID (1) controller
+2023-04-12 12:16:06,700 [rembuilder] [DEBUG] CF: MTR-DRV: Using brushed motor driver
+2023-04-12 12:16:06,701 [rembuilder] [DEBUG] CF: PLATFORM: Low interference mode. NRF51 TX power offset by -12db.
+2023-04-12 12:16:06,701 [rembuilder] [DEBUG] CF: SYS: About to run tests in system.c.
+2023-04-12 12:16:06,701 [rembuilder] [DEBUG] CF: SYS: NRF51 version: 2022.12
+2023-04-12 12:16:06,701 [rembuilder] [DEBUG] CF: EEPROM: I2C connection [OK].
+2023-04-12 12:16:06,701 [rembuilder] [DEBUG] CF: STORAGE: Storage check [OK].
+2023-04-12 12:16:06,701 [rembuilder] [DEBUG] CF: IMU: BMI088 gyro self-test [OK]
+2023-04-12 12:16:06,702 [rembuilder] [DEBUG] CF: DECK_CORE: Deck 0 test [OK].
+2023-04-12 12:16:06,702 [rembuilder] [DEBUG] CF: SYS: Self test passed!
+2023-04-12 12:16:06,702 [rembuilder] [DEBUG] CF: STAB: Wait for sensor calibration...
+2023-04-12 12:16:06,702 [rembuilder] [DEBUG] CF: SYS: Free heap: 17824 bytes
+2023-04-12 12:16:06,702 [rembuilder] [DEBUG] CF: DWM: Automatic mode: detected TWR
+2023-04-12 12:16:06,703 [rembuilder] [DEBUG] CF: STAB: Ready to fly.
+2023-04-12 12:16:06,703 [rembuilder] [DEBUG] CF: ESTKALMAN: State out of bounds, resetting

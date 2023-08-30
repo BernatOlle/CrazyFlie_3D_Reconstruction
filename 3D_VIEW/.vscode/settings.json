@@ -1,0 +1,7 @@
+{
+    "C_Cpp.errorSquiggles": "disabled",
+    "files.associations": {
+        "wifi.h": "c",
+        "locodeck.h": "c"
+    }
+}
