@@ -113,37 +113,43 @@ class Dron:
     def take_off(self, scf, init_value, z):
         cf = scf.cf
         uri = scf._link_uri
-        take_off_time = 1.0
+        take_off_time = 3.0
         sleep_time = 0.1
         steps = int(take_off_time / sleep_time)
+
+        
 
         vz = self.z_distance / take_off_time
 
         print(vz)
+        yaw = self.prev_angle
 
-        if uri == self.URI2:
-            yaw = 180  # take_off
-        else:
-            yaw = 0
+        yaw_rate = yaw/take_off_time
         
         _, curr_x = self.get_estimated_position(scf)
         print(self.battery)
+        self.previous_battery = self.battery
         if (self.battery > 3.4):
             for i in range(steps):
                     _, curr_x = self.get_estimated_position(scf)
+                    if curr_x[3] < 0:
+                        angle = 360 - abs(curr_x[3])
+                    else:
+                        angle = curr_x[3]
                     print("Pos",curr_x)
-                    print("dif_yaw",yaw - abs(curr_x[3]))
+                    print("dif_yaw",abs(yaw - angle))
                     if (
-                        yaw - abs(curr_x[3])
+                        abs(yaw - angle)
                     ) < 15:  # si el dron ja ha fet la mitja volta que no giri mes
+                        
                         cf.commander.send_velocity_world_setpoint(0, 0, vz, 0)
-                    elif((curr_x[3]>0)):
-                        cf.commander.send_velocity_world_setpoint(0, 0, vz, -yaw)
-                    elif((curr_x[3]<0)):
-                        cf.commander.send_velocity_world_setpoint(0, 0, vz, yaw)
+                    elif((angle>yaw)):
+                        cf.commander.send_velocity_world_setpoint(0, 0, vz, -yaw_rate)
+                    elif((angle<yaw)):
+                        cf.commander.send_velocity_world_setpoint(0, 0, vz, yaw_rate)
                     time.sleep(sleep_time)
 
-            for i in range(20):
+            for i in range(6):
                 cf.commander.send_hover_setpoint(0, 0, 0, self.z_distance)
                 time.sleep(0.1)
         else:
@@ -232,11 +238,11 @@ class Dron:
         time.sleep(0.1)
 
 
-    def sequence_point(self,n_points,distance,z,degrees):
+    def sequence_point(self,n_points,distance,z,degrees, final_degrees):
         n_points+=1
-        theta = np.linspace(np.radians(degrees), 2*np.pi, n_points, endpoint=True)
+        theta = np.linspace(np.radians(degrees), np.radians(final_degrees), n_points, endpoint=True)
         x = distance * np.cos(theta+np.pi)
-        y = distance * np.sin(theta+np.pi)*1.3
+        y = distance * np.sin(theta+np.pi)*1
         z_v = [z]*n_points
         '''+self.init_z'''
         grados = np.degrees(theta)
@@ -244,7 +250,7 @@ class Dron:
         return sequence
     
     def has_reached_position(self,current_position, position):
-        threshold_distance = 0.05
+        threshold_distance = 0.1
 
         distance = ((current_position[0] - position[0]) ** 2 +
                     (current_position[1] - position[1]) ** 2 +
@@ -259,14 +265,14 @@ class Dron:
             _,_,self.battery = swarm.get_estimated_positions()
             print("Battery",self.battery)
             for uri in self.uris:
-                if self.battery[uri] < 3.15:
+                if self.battery[uri] < 3.15 and (self.previous_battery-self.battery[uri])<0.1:
                     self.low_battery = True
                     print("Low battery set")
             self.pos = i
             self.sequence = seq
             self.stop_event = stop_event
             self.get_pos = get_pos
-            
+            self.previous_battery = self.battery[uri]
             swarm.parallel(self.next_point, args_dict=self.seq_args)
 
     
@@ -277,6 +283,33 @@ class Dron:
 
     def do_get_pos(self,get_pos):
         self.get_pos = get_pos
+    
+    def do_all_seq(self,seq):
+        self.at_point = False
+        with Swarm(self.uris, factory=self.factory) as swarm:
+            self.act_seq = seq
+            print("do all seq")
+            swarm.parallel(self.all_seq, args_dict=self.seq_args)
+
+    def all_seq(self,scf, init_value, z):
+        cf = scf.cf
+        uri = scf._link_uri
+        
+
+        print("Go to the last position")
+        for position in self.act_seq:
+                print('Setting position '+uri+' {}'.format(position))
+                for i  in range(5):
+                    cf.commander.send_position_setpoint(position[0],
+                                                        position[1],
+                                                        position[2], 
+                                                        position[3])
+                    time.sleep(0.05)
+
+        self.at_point = True
+        
+        return position
+
 
     def next_point(self, scf, init_value, z):
         print("ini")
@@ -360,7 +393,7 @@ class Dron:
         except Exception as e:
             print("Error", e)
 
-    def init_dron(self):
+    def init_dron(self,uri):
         cflib.crtp.init_drivers()
         self.factory = CachedCfFactory(rw_cache="./cache")
         self.drone_at_point=False
@@ -372,20 +405,20 @@ class Dron:
             print("Waiting for parameters to be downloaded...")
             swarm.parallel(self.wait_for_param_download)
             self.init_values, self.init_angles,_ = swarm.get_estimated_positions()
-            self.init_z = self.init_values[self.URI3][2]
+            self.init_z = self.init_values[uri][2]
             zdistance = [0.6]  # radio, npoints, cicle seconds, photo seconds , z distance
 
-            for uri in self.uris:
-                self.seq_args[uri].append(self.init_values[uri])
-                self.seq_args[uri].extend(zdistance)
+            self.seq_args[uri].append(self.init_values[uri])
+            self.seq_args[uri].extend(zdistance)
          
 
-    def do_take_off(self,z):
+    def do_take_off(self,z, prev_angle):
         cflib.crtp.init_drivers()
         self.factory = CachedCfFactory(rw_cache="./cache")
         with Swarm(self.uris, factory=self.factory) as swarm:
             print("Take off")
             self.z_distance = z
+            self.prev_angle = prev_angle
             swarm.parallel(self.take_off, args_dict=self.seq_args)
 
     def do_land(self):

@@ -195,7 +195,7 @@ class AIDECK:
 
 
 if __name__ == "__main__":
-    cam = AIDECK("Test1", 5000, "172.20.10.2")
+    cam = AIDECK("Test1", 5000, "172.20.10.3")
     for i in range(60):
         print(i + 1)
         cam.take_photo(1)

@@ -226,8 +226,8 @@ class Sfm:
             image_point = image_point.T
             rot_vector = rot_vector.T
 
-        # print(obj_point.shape)
-        # print(image_point.shape)
+        print(obj_point.shape)
+        print(image_point.shape)
         _, rot_vector_calc, tran_vector, inlier = cv2.solvePnPRansac(
             obj_point, image_point, K, dist_coeff, cv2.SOLVEPNP_ITERATIVE
         )
@@ -329,7 +329,7 @@ class Sfm:
         Generates the .ply which can be used to open the point cloud
         """
         out_points = (
-            point_cloud.reshape(-1, 3) #* 200
+            point_cloud.reshape(-1, 3) * 200
         )  # el 200 per fer la imatge 200 cops mes gran
         out_colors = colors.reshape(-1, 3)
         # print(out_colors.shape, out_points.shape)
@@ -442,15 +442,21 @@ class Sfm:
         pts2 = []
         img_kp = cv2.drawKeypoints(image_0, key_points_0, None)
         img_kp1 = cv2.drawKeypoints(image_1, key_points_1, None)
-
-
+        print(f"{self.img_dir[0]}/{self.img_dir[0]}kp/{file_0}")
+        cv2.imwrite(
+                    f"images/{self.img_dir[0]}/iPhonekp/kp_{file_0}",
+                    img_kp,
+                    [cv2.IMWRITE_JPEG_QUALITY, 95],
+                )
         for m, n in matches:
             if m.distance < 0.70 * n.distance:
                 feature.append(m)
                 pts1.append(key_points_0[m.queryIdx].pt)
                 pts2.append(key_points_1[m.trainIdx].pt)
+        
+        print(len(matches))
 
-        return np.array(pts1), np.array(pts2), img_kp, img_kp1
+        return np.array(pts1), np.array(pts2)
 
     def recal(self, imgs, image_2, file_1):
         t_points_3d = []
@@ -661,7 +667,8 @@ class Sfm:
                     if file_0.lower().endswith((".jpg",".png")):
                         file_path = os.path.join(dir, file_0)
                         image_1 = cv2.imread(file_path)
-                        #image_1 = self.remove_bg(img0)
+                        image_1 = cv2.resize(image_1, dsize=(1296, 1936), interpolation=cv2.INTER_CUBIC)
+                        #image_1 = self.remove_bg(image_1)
                         image_1 = self.downscale_image(image_1, id)
 
                         if i == 0:
@@ -696,7 +703,7 @@ class Sfm:
 
                             # nomes em quedo amb la essential_matrix
 
-                            tran_matrix_drone = np.array(self.dron.position)[:3].reshape(
+                            '''tran_matrix_drone = np.array(self.dron.position)[:3].reshape(
                                 -1, 1
                             )
                             rot_matrix_drone = self.dron.get_rotation_matrix(
@@ -706,7 +713,7 @@ class Sfm:
                             tran_matrix_final_dron[i] = [
                                 tran_matrix_drone,
                                 rot_matrix_drone,
-                            ]
+                            ]'''
 
                             _, rot_matrix, tran_matrix, em_mask = cv2.recoverPose(
                                 essential_matrix, feature_0, feature_1, self.img_obj[id].K
@@ -1071,13 +1078,13 @@ class Sfm:
         for t in threads:
             t.join()
 
-        '''with open("final_point.pickle", "wb") as file:
+        with open("final_point.pickle", "wb") as file:
             pickle.dump(self.final_point, file)
 
         with open("final_point_color.pickle", "wb") as file:
             pickle.dump(self.final_point_color, file)
 
-        np.savetxt("final_point.txt", self.final_point, fmt="%f")
+        '''np.savetxt("final_point.txt", self.final_point, fmt="%f")
 
         print(self.final_point)
 
@@ -1090,8 +1097,8 @@ class Sfm:
         )
 
         for quadrant, points_in_quadrant in quadrants.items():
-            print(f"Cuadrante {quadrant}: {len(points_in_quadrant)}")'''
-
+            print(f"Cuadrante {quadrant}: {len(points_in_quadrant)}")
+'''
         #self.to_show(self.final_point)
 
         self.to_ply(
@@ -1100,6 +1107,6 @@ class Sfm:
         print("Finish", time.time() - start_time)
 
 if __name__ == "__main__":
-    sfm = Sfm("Test_1")
+    sfm = Sfm("iPhone")
     sfm()
     print("Final")

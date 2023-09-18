@@ -78,7 +78,7 @@ class Sfm:
             default="1",
             metavar="z-distance",
             help="Altitude of the object",
-        )  # 1 = Dynamic trajectory, 2 = Predefined trajectory
+        )  
         parser.add_argument(
             "-p",
             type=int,
@@ -98,11 +98,12 @@ class Sfm:
         print(self.n_drones, self.trajectory, self.positioning)
 
         self.dron = Dron()
-        self.cam = AIDECK("Test_1", 5000, "172.20.10.2")
+
         self.img_obj, self.img_dir = [], []
         for i in range(self.n_drones):
             self.img_obj.append(Image_loader(img_dir, downscale_factor))
             self.img_dir.append(img_dir)
+            self.cam = AIDECK(img_dir, 5000, "172.20.10.3")
 
         print("DIR" + str(self.img_dir))
 
@@ -352,9 +353,6 @@ class Sfm:
         with open(path + "/res/" + name + ".ply", "w") as f:
             f.write(ply_header % dict(vert_num=len(verts)))
             np.savetxt(f, verts, "%f %f %f %d %d %d")
-    
-    def _update_battery(self):
-        print("pm.vbat")
 
     def to_show(self, index, mlist, nrows, ncols, rotation, final, fig):
         act_index = 0
@@ -444,10 +442,10 @@ class Sfm:
         cv2.imwrite(f"images/Test_1_kp/img_{file_1}.png", img_kp)
         cv2.imwrite(f"images/Test_1_kp2/img_{file_0}.png", img_kp1)
 
-        '''cv2.imshow("file_1", img_kp)
+        """cv2.imshow("file_1", img_kp)
         cv2.imshow("file_0", img_kp1)
 
-        cv2.waitKey(1000)'''
+        cv2.waitKey(1000)"""
 
         for m, n in matches:
             if m.distance < 0.70 * n.distance:
@@ -472,7 +470,7 @@ class Sfm:
 
             img1 = cv2.imread(file_path)
             image_1 = self.downscale_image(img1)
-            #image_1 = self.remove_bg(image_1)
+            # image_1 = self.remove_bg(image_1)
 
             print("Insert new points recal", k)
             pose_0, pose_1, feature_0, feature_1 = self.vect[k]
@@ -579,9 +577,39 @@ class Sfm:
         pose_0 = np.empty((3, 4))
         low_bat = False
 
-        self.dron.init_dron()
-        self.dron.do_take_off(self.z_distance)
-        seq = self.dron.sequence_point(n_points,self.ratio,self.z_distance,0)
+        continue_seq = False
+        init_angle = 0
+        total_points = np.zeros((1, 3))
+        total_colors = np.zeros((1, 3))
+        self.dron.init_dron(self.dron.URI3)
+        self.dron.do_take_off(self.z_distance, init_angle)
+        if continue_seq == True:
+            '''with open("total_points.pickle", "rb") as file:
+                total_points = pickle.load(file)
+
+            with open("total_colors.pickle", "rb") as file:
+                total_colors = pickle.load(file)'''
+
+            with open("last_sequence.pickle", "rb") as file:
+                seq = pickle.load(file)
+
+            act_seq = self.dron.sequence_point(
+                10, self.ratio, self.z_distance, 0, seq[0][3]
+            )
+            print(act_seq)
+            final_pos = act_seq[len(act_seq)-1]
+            print("Go to the last point")
+            self.dron.do_all_seq(act_seq)
+
+            
+            seq = self.dron.sequence_point(
+                n_points, self.ratio, self.z_distance, final_pos[3], 360
+            )
+
+        if continue_seq == False:
+            seq = self.dron.sequence_point(
+                n_points, self.ratio, self.z_distance, 0, 360
+            )
 
         if self.positioning == 2:  # 1 = get for the drones, 2 estimate positions
             transform_matrix_0 = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]])
@@ -590,7 +618,18 @@ class Sfm:
         transform_matrix_1 = np.empty((3, 4))
         pose_array = self.img_obj[id].K.ravel()
         # fig = plt.figure(figsize=(7, 15))
-       
+
+        """init_angle = seq[0][3]
+            print(seq[0][3])
+            aj_seq = []
+
+            for i in range(len(seq)):
+                adjusted_angle = seq[i][3] - init_angle
+                adjusted_point = (seq[i][0], seq[i][1], seq[i][2], adjusted_angle)
+                aj_seq.append(adjusted_point)
+
+            seq = aj_seq
+"""
 
         pose_array_final = {}
         transform_matrix_1_array = {}
@@ -598,10 +637,13 @@ class Sfm:
         rotation = 0
 
         pose_1 = np.empty((3, 4))
-        total_points = np.zeros((1, 3))
-        total_colors = np.zeros((1, 3))
+        
         imgs = sorted(
-            [file for file in os.listdir(dir) if file.lower().endswith((".png",".jpg"))]
+            [
+                file
+                for file in os.listdir(dir)
+                if file.lower().endswith((".png", ".jpg"))
+            ]
         )
 
         print(imgs)
@@ -614,10 +656,9 @@ class Sfm:
         pose_array_final[i] = pose_0
 
         if self.dron.low_battery == False:
-
             while True:
                 print("------------------------------------------")
-                
+
                 if not (len(seq) == 1):
                     point = seq[1]
                     print(point)
@@ -631,18 +672,17 @@ class Sfm:
 
                 time.sleep(1)
                 print("Low battery", self.dron.low_battery)
-                
 
                 if self.dron.low_battery:
                     thread.join()
                     low_bat = True
                     print("Low Battery")
+
                     break
 
-                
                 time.sleep(2)
                 while not self.dron.drone_at_point:
-                    #no haga nada
+                    # no haga nada
                     pass
                 self.cam.take_photo(1)
                 get_pos.set()
@@ -650,16 +690,15 @@ class Sfm:
                 time.sleep(0.8)
                 expected_pos_dron[i] = self.dron.actual_pos
                 print("Get dron position ")
-                
+
                 if len(imgs) > i:
-                    
-                    print("ID",id,"Inici", i)
+                    print("ID", id, "Inici", i)
                     file_0 = imgs[i]
                     print(file_0)
-                    if file_0.lower().endswith((".png",".jpg")):
+                    if file_0.lower().endswith((".png", ".jpg")):
                         file_path = os.path.join(dir, file_0)
                         image_1 = cv2.imread(file_path)
-                        #image_1 = self.remove_bg(img0)
+                        # image_1 = self.remove_bg(img0)
                         image_1 = self.downscale_image(image_1, id)
 
                         if i == 0:
@@ -670,12 +709,18 @@ class Sfm:
                             print("Event set")
 
                             if self.trajectory == 1:
-                                n_points = (max_points_quality - len(total_points)) / len(points_3d)
+                                n_points = (
+                                    max_points_quality - len(total_points)
+                                ) / len(points_3d)
                             else:
-                                n_points -=1
+                                n_points -= 1
 
                             seq = self.dron.sequence_point(
-                                int(n_points), self.ratio, self.z_distance, point[3]
+                                int(n_points),
+                                self.ratio,
+                                self.z_distance,
+                                point[3],
+                                360,
                             )
 
                             stop_event.set()
@@ -685,15 +730,17 @@ class Sfm:
 
                             continue
 
-
                         tran_matrix_drone = np.array(self.dron.position)[:3].reshape(
-                                -1, 1
-                            )
+                            -1, 1
+                        )
                         rot_matrix_drone = self.dron.get_rotation_matrix(
                             self.dron.angle
                         )
 
-                        tran_matrix_final_dron[i] = [tran_matrix_drone, rot_matrix_drone]
+                        tran_matrix_final_dron[i] = [
+                            tran_matrix_drone,
+                            rot_matrix_drone,
+                        ]
 
                         if i < 2 and self.positioning == 2:
                             feature_0, feature_1 = self.find_features(
@@ -714,15 +761,16 @@ class Sfm:
 
                             # nomes em quedo amb la essential_matrix
 
-                            
-
-                            ''' tran_matrix_final_dron[i] = [
+                            """ tran_matrix_final_dron[i] = [
                                 tran_matrix_drone,
                                 rot_matrix_drone,
-                            ]'''
+                            ]"""
 
                             _, rot_matrix, tran_matrix, em_mask = cv2.recoverPose(
-                                essential_matrix, feature_0, feature_1, self.img_obj[id].K
+                                essential_matrix,
+                                feature_0,
+                                feature_1,
+                                self.img_obj[id].K,
                             )
 
                             tran_matrix_final[i] = [tran_matrix, rot_matrix]
@@ -735,7 +783,9 @@ class Sfm:
                             )  # els 3x3 primers la multiplicacio dels primers 3x3 de la matriu de trans 0 i la matriu de rotacio
                             transform_matrix_1[:3, 3] = transform_matrix_0[
                                 :3, 3
-                            ] + np.matmul(transform_matrix_0[:3, :3], tran_matrix.ravel())
+                            ] + np.matmul(
+                                transform_matrix_0[:3, :3], tran_matrix.ravel()
+                            )
 
                             transform_matrix_1_array[i] = transform_matrix_1
 
@@ -795,7 +845,7 @@ class Sfm:
                                 + ": "
                                 + str(temp_points_3d.shape)
                             )
-                            '''p = mp.Process(
+                            """p = mp.Process(
                                 target=self.to_show,
                                 args=(
                                     index,
@@ -806,16 +856,22 @@ class Sfm:
                                     final,
                                     fig,
                                 ),
-                            )'''
+                            )"""
                             # p.start()
-                            
+
                             if self.trajectory == 1:
-                                n_points = (max_points_quality - len(total_points)) / len(points_3d)
+                                n_points = (
+                                    max_points_quality - len(total_points)
+                                ) / len(points_3d)
                             else:
-                                n_points -=1 
+                                n_points -= 1
 
                             seq = self.dron.sequence_point(
-                                int(n_points), self.ratio, self.z_distance, point[3]
+                                int(n_points),
+                                self.ratio,
+                                self.z_distance,
+                                point[3],
+                                360,
                             )
 
                             image_0 = np.copy(image_1)
@@ -836,29 +892,38 @@ class Sfm:
                         print("Features shapes", features_cur.shape, features_2.shape)
 
                         if not features_cur.shape == (0,):
-
-
                             if self.positioning == 1:
-                                tran_matrix = self.tran_matrix_final[i+ini][0]
-                                rot_matrix = self.tran_matrix_final[i+ini][1]
+                                tran_matrix = self.tran_matrix_final[i + ini][0]
+                                rot_matrix = self.tran_matrix_final[i + ini][1]
 
                                 transform_matrix_1 = np.hstack(
-                                    (tran_matrix_drone, rot_matrix_drone)  #canviar per tran_matrix, rot_matrix
+                                    (
+                                        tran_matrix_drone,
+                                        rot_matrix_drone,
+                                    )  # canviar per tran_matrix, rot_matrix
                                 )  # depen de K
 
-                                transform_matrix_1_array[i] = transform_matrix_1  # depen de K
+                                transform_matrix_1_array[
+                                    i
+                                ] = transform_matrix_1  # depen de K
                                 pose_2 = np.matmul(
                                     self.img_obj[id].K, transform_matrix_1
                                 )  # depen de K
 
                             if i > 1:
                                 if self.positioning == 2 and i != 2:
-                                    feature_0, feature_1, points_3d = self.triangulation(
+                                    (
+                                        feature_0,
+                                        feature_1,
+                                        points_3d,
+                                    ) = self.triangulation(
                                         pose_0, pose_1, feature_0, feature_1
                                     )
 
                                     feature_1 = feature_1.T
-                                    points_3d = cv2.convertPointsFromHomogeneous(points_3d.T)
+                                    points_3d = cv2.convertPointsFromHomogeneous(
+                                        points_3d.T
+                                    )
                                     points_3d = points_3d[:, 0, :]
 
                                 (
@@ -866,17 +931,19 @@ class Sfm:
                                     cm_points_1,
                                     cm_mask_0,
                                     cm_mask_1,
-                                ) = self.common_points(feature_1, features_cur, features_2)
+                                ) = self.common_points(
+                                    feature_1, features_cur, features_2
+                                )
 
                                 # print("Features", feature_0,feature_1, features_cur, features_2)
 
                                 # print(i,cm_points_0,cm_points_1)
-                                '''tran_matrix_drone = np.array(self.dron.position)[:3].reshape(-1, 1)
+                                """tran_matrix_drone = np.array(self.dron.position)[:3].reshape(-1, 1)
                                 print(self.dron.angle)
 
                                 rot_matrix_drone = self.dron.get_rotation_matrix(self.dron.angle)
 
-                                tran_matrix_final_dron[i] = [tran_matrix_drone, rot_matrix_drone]'''
+                                tran_matrix_final_dron[i] = [tran_matrix_drone, rot_matrix_drone]"""
                                 try:
                                     if self.positioning == 2:
                                         cm_points_2 = features_2[cm_points_1]
@@ -918,7 +985,11 @@ class Sfm:
                                             homogenity=0,
                                         )  # nomes error depen de K
 
-                                    cm_mask_0, cm_mask_1, points_3d = self.triangulation(
+                                    (
+                                        cm_mask_0,
+                                        cm_mask_1,
+                                        points_3d,
+                                    ) = self.triangulation(
                                         pose_1, pose_2, cm_mask_0, cm_mask_1
                                     )
 
@@ -941,7 +1012,9 @@ class Sfm:
                                 # takes a long time to run
                                 color_vector = []
 
-                                total_points = np.vstack((total_points, points_3d[:, 0, :]))
+                                total_points = np.vstack(
+                                    (total_points, points_3d[:, 0, :])
+                                )
                                 # print("hola")
                                 print("ID", id, "Total points", total_points.shape)
 
@@ -955,12 +1028,14 @@ class Sfm:
                                 # print("Fin")
                                 total_colors = np.vstack((total_colors, color_vector))
                                 print("ID", id, "Total colors", total_colors.shape)
-                                
+
                             if self.trajectory == 1:
-                                n_points = (max_points_quality - len(total_points)) / len(points_3d)
+                                n_points = (
+                                    max_points_quality - len(total_points)
+                                ) / len(points_3d)
 
                             if self.trajectory == 2:
-                                    n_points -=1
+                                n_points -= 1
 
                             if self.positioning == 2:
                                 transform_matrix_0 = np.copy(transform_matrix_1)
@@ -994,25 +1069,34 @@ class Sfm:
                             # print("Pose_2",pose_array_final,len(pose_array_final))
 
                             # print("Final", final.value)
-                        
-                        if(n_points > -1):
-                            seq = self.dron.sequence_point(int(n_points), self.ratio, self.z_distance, point[3])
+
+                        if n_points > -1:
+                            seq = self.dron.sequence_point(
+                                int(n_points),
+                                self.ratio,
+                                self.z_distance,
+                                point[3],
+                                360,
+                            )
                             print("Aprox points left:", n_points)
 
                     i += 1
-                    
+
                 # sleep 3 seconds
 
                 imgs = sorted(
-                    [file for file in os.listdir(dir) if file.lower().endswith((".png",".jpg"))]
+                    [
+                        file
+                        for file in os.listdir(dir)
+                        if file.lower().endswith((".png", ".jpg"))
+                    ]
                 )
                 stop_event.set()
                 self.dron.do_stop_event(stop_event)
                 thread.join()
                 ac_time = time.time()
-                actual,_ = total_points.shape
-                if (actual>max_points_quality or n_points == 0):
-
+                actual, _ = total_points.shape
+                if actual > max_points_quality or n_points == 0:
                     # final.value = True
                     if self.positioning == 2:
                         with open("pose_array.pickle", "wb") as file:
@@ -1039,36 +1123,55 @@ class Sfm:
 
             # while
             print("Out while")
-            if not(low_bat):
+            if not (low_bat):
                 self.dron.do_land()
-            
+            else:
+                print(seq)
+                with open("last_sequence.pickle", "wb") as file:
+                    pickle.dump(seq, file)
+
             # p.join()
-            if not self.dron.low_battery:
+            if not low_bat:
                 self.final_point = np.vstack((self.final_point, total_points))
-                self.final_point_color = np.vstack((self.final_point_color, total_colors))
+                self.final_point_color = np.vstack(
+                    (self.final_point_color, total_colors)
+                )
                 print("Comença el mesh")
-                self.to_ply(self.img_obj[id].path, total_points, total_colors, self.img_dir[id])
+                self.to_ply(
+                    self.img_obj[id].path, total_points, total_colors, self.img_dir[id]
+                )
                 np.savetxt(
-                    self.img_obj[id].path + "/res/" + self.img_dir[id] + "_pose_array.csv",
+                    self.img_obj[id].path
+                    + "/res/"
+                    + self.img_dir[id]
+                    + "_pose_array.csv",
                     pose_array,
                     delimiter="\n",
                 )
                 # self.mesh_representation(self.img_dir)
+            with open("total_points.pickle", "wb") as file:
+                pickle.dump(total_points, file)
+
+            with open("total_colors.pickle", "wb") as file:
+                pickle.dump(total_colors, file)
+
             with open("tran_matrix_final_ron.pickle", "wb") as file:
                 pickle.dump(tran_matrix_final_dron, file)
-            
+
             with open("pose_expected_dron.pickle", "wb") as file:
                 pickle.dump(expected_pos_dron, file)
 
             print("Acaba el mesh")
         else:
             print("Low battery")
-            
+
     def __call__(self):
         start_time = time.time()
         self.final_point = np.zeros((1, 3))
         self.final_point_color = np.zeros((1, 3))
-        dir = []
+
+        self.reconstruction("images/" + self.img_dir[0], 0)
+        """dir = []
         threads = []
         for dirs in self.img_dir:
             dir.append("images/" + dirs)
@@ -1081,8 +1184,8 @@ class Sfm:
 
         for t in threads:
             t.join()
-
-        '''with open("final_point.pickle", "wb") as file:
+"""
+        """with open("final_point.pickle", "wb") as file:
             pickle.dump(self.final_point, file)
 
         with open("final_point_color.pickle", "wb") as file:
@@ -1101,16 +1204,17 @@ class Sfm:
         )
 
         for quadrant, points_in_quadrant in quadrants.items():
-            print(f"Cuadrante {quadrant}: {len(points_in_quadrant)}")'''
+            print(f"Cuadrante {quadrant}: {len(points_in_quadrant)}")"""
 
-        #self.to_show(self.final_point)
+        # self.to_show(self.final_point)
 
         self.to_ply(
             self.img_final, self.final_point, self.final_point_color, "final_point"
         )
         print("Finish", time.time() - start_time)
 
+
 if __name__ == "__main__":
-    sfm = Sfm("Test_1")
+    sfm = Sfm("Test_2")
     sfm()
     print("Final")

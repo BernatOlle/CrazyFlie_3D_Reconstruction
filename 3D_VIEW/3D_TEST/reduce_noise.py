@@ -345,7 +345,7 @@ def points_inside_sphere(point_cloud, center, r):
     
     return puntos_dentro, pos, points_dentro_array
 
-def reduce_noise(point_cloud,point_cloud_color, r):
+def reduce_noise(point_cloud,point_cloud_color, r, threshold):
     point_cloud_list = point_cloud.tolist()
     point_cloud_dic = {index: value for index, value in enumerate(point_cloud_list)}
 
@@ -363,7 +363,7 @@ def reduce_noise(point_cloud,point_cloud_color, r):
         print(points_inside, actual_key)
         
 
-        if(points_inside > 10):
+        if(points_inside > threshold):
             
             con_total_pos = set(total_pos)
             con_pos = set(pos)
@@ -384,7 +384,7 @@ def reduce_noise(point_cloud,point_cloud_color, r):
         actual_key = after_key_list[next_index]
         print("Actual key",actual_key)
         i +=1
-        print("len", len(point_cloud_dic))
+        print("Total lenght", len(total_pos))
         
     return total_pos
 
@@ -527,12 +527,13 @@ if __name__ == "__main__":
     new_point_cloud_color = np.zeros((1, 3))
     
     init_time = time.time()
-    pos = reduce_noise(point_cloud,point_cloud_color, 0.2)
+    pos = reduce_noise(point_cloud,point_cloud_color, 0.4, 10)
 
     print("Time", time.time()-init_time)
     pos_np = np.array(pos)
 
     new_point_cloud = point_cloud[pos_np]
+    print(new_point_cloud)
     new_point_cloud_color = point_cloud_color[pos_np]
     
     

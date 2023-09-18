@@ -76,9 +76,8 @@ tran_matrix_final.update(tran_matrix_final_0)
 for key, value in tran_matrix_final_1.items():
     new_key = key + len(tran_matrix_final_0)  # Cambiamos la key para evitar colisiones
     tran_matrix_final[new_key] = value'''
-print(expected_pose_dron)
 
-etiquetas = list(expected_pose_dron.keys())
+etiquetas = list(tran_matrix_final.keys())
 expected_pose_dron = np.array(list(expected_pose_dron.values()))
 
 tran_matrix_final = dict(tran_matrix_final)
@@ -92,22 +91,23 @@ x_coordinates = [matriz[0] for matriz in x_coordinates]
 y_coordinates = [matriz[0] for matriz in y_coordinates]
 z_coordinates = [matriz[0] for matriz in z_coordinates]
 
-x = expected_pose_dron[:,0]
+'''x = expected_pose_dron[:,0]
 y = expected_pose_dron[:,1]
-z = expected_pose_dron[:,2]
+z = expected_pose_dron[:,2]'''
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
 # Dibuja los puntos en 3D
 ax.scatter(x_coordinates, y_coordinates, z_coordinates, c='blue')
-ax.scatter(x, y, z, c='red')
+'''ax.scatter(x, y, z, c='red')'''
 
-for etiqueta, xi, yi, zi in zip(etiquetas, x, y, z):
-    ax.text(xi, yi, zi, etiqueta)
+'''for etiqueta, xi, yi, zi in zip(etiquetas, x, y, z):
+    ax.text(xi, yi, zi, etiqueta)'''
 
 for etiqueta, xi, yi, zi in zip(etiquetas, x_coordinates, y_coordinates, z_coordinates):
     ax.text(xi, yi, zi, etiqueta)
+    print (etiqueta)
 
 
 for label, coords in tran_matrix_final.items():
@@ -120,7 +120,6 @@ for label, coords in tran_matrix_final.items():
 
     # Calcular la longitud de la flecha (por ejemplo, 0.2 veces la escala)
     arrow_length = 0.1
-    ax.set_zlim(0, 1.8)
     # Dibujar la flecha en 3D
     ax.quiver(
         coords[0][0][0],
